@@ -49,7 +49,11 @@ def sentenceSplit(string, N, step):
 
 def levenshteinStr(sentence, simlist, threshold, model=None):
     """
-    return [score, source_sentence, matched_sentence]"""
+    单句与匹配句子list做相似度计算，返回相似度分值最高的一个
+    :param sentence:string, 原句
+    :param simlist:list, 匹配句子list
+    :param threshold:float, 阈值
+    :return [score, source_sentence, matched_sentence]"""
     sim_temp_list = []
     sim_temp = float(threshold)
     for eachsim in simlist:
@@ -63,20 +67,6 @@ def levenshteinStr(sentence, simlist, threshold, model=None):
         return None
     else:
         return sim_temp_list
-
-def levenshteinList(sentence, simlist, threshold):
-    sentence_list = sentenceSplit(sentence, 10, 1)
-    result = []
-    for eachsentence in sentence_list:
-        a = levenshteinStr(eachsentence, simlist, threshold)
-        if a == None:
-            continue
-        if result == []:
-            result = a
-        #print(a,result)
-        if float(a[0]) > float(result[0]):
-            result = a
-    return result
 
 def top_keypoint(keypoints):
     '''
@@ -98,7 +88,6 @@ import jieba
 
 def w2v_model(sentence,simi_list,threshold,model):
     '''
-
     :param sentence: 输入单句
     :param simi_list: 匹配库
     :param threshold: 输出相似度最大的句子的阈值
@@ -119,12 +108,11 @@ def w2v_model(sentence,simi_list,threshold,model):
    # print(simi_list)
     for candidate in simi_list:
         score = 0
-        #print('ca',candidate)
         if candidate == '':
             pass
         else:
-            candidate = list(jieba.cut(candidate[0]))
-            score = model_loaded.n_similarity(words_new, candidate)
+            candidate_list = list(jieba.cut(candidate))
+            score = model_loaded.n_similarity(words_new, candidate_list)
             if score > sim_temp:
                 sim_temp = score
                 sim_temp_list = [sim_temp, sentence, candidate]

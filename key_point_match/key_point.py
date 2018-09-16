@@ -1,7 +1,7 @@
 import json
 from utils import *
 
-class Important_point(object):
+class KeyPoint(object):
     def __init__(self,compare_corpus_path='data/compare_corpus_11.json'):
         compare_corpus = corpus(compare_corpus_path)
         self.corpus_xjfq = compare_corpus['现金分期']
@@ -16,6 +16,7 @@ class Important_point(object):
         :param topic: string, '现金分期'
         :param method: function, levenshteinStr()
         :param sentence: string
+        :param threshold: float,单句匹配阈值0.7
         :return result: {'sentence':,'keypoint':'', 'score':'', 'compared_source':''}
         '''
         # 加载匹配库
@@ -57,14 +58,12 @@ class Important_point(object):
     def deal_dialog(self,dialog,topic,N,step):
         '''
         处理输入的一段对话
-        只取客服的句子
-        :param dialogs: [{"target": "坐席", "speech": "王先生您好有什么可以帮您", "start_time": "0.00", "end_time": "3.83"},{}]
+        只取客服的句子，滑动窗口：对输入字符串按照窗口大小N以步长step取出，返回字符串数组
+        :param dialog: [{"target": "坐席", "speech": "王先生您好有什么可以帮您", "start_time": "0.00", "end_time": "3.83"},{}]
         :param topic:'现金分期'
         :param N:切分句子滑动窗口大小 10
         :param step:滑窗步长 3
         :return subsentence:[{'sentence':subsentence1,'sen_num': num},{'sentence':subsentence2,'sen_num': num}...]
-        :return ID
-        滑动窗口：对输入字符串按照窗口大小N以步长step取出，返回字符串数组
         '''
         sentence=[]
         subsentence=[]
@@ -91,8 +90,6 @@ class Important_point(object):
                     for item  in res:
                         subsen = {'sentence':item, 'sen_num':sen_num}
                         subsentence.append(subsen)
-                        #item=item+'_'+str(sen_num)
-                        #subsentence.append(item)
         return subsentence, index_sentence
 
     def subsenlist_simi(self, subsentence_list, topic, method=levenshteinStr):
@@ -108,7 +105,7 @@ class Important_point(object):
         for subsentence in subsentence_list:
             sentence = subsentence['sentence']
             sentence_num = subsentence['sen_num']
-            subsentence_result = self.get_similarity(topic, method, sentence, threshold=0.3)
+            subsentence_result = self.get_similarity(topic, method, sentence, threshold=0.7)
             # print('subsentence_result:')
             # print(subsentence_result)
             if subsentence_result != None:
@@ -123,10 +120,14 @@ class Important_point(object):
         '''
         获取最终结果格式
         :param sentence_result:[{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。'}, ]
+        :source_index:dict，句子index，用于获取子句对应的原句
         :return result:[{'keypoint':'关键点1','matched':[{"matched_sentence": "", "compared_sentence": "", "score":float, "long"}]}]
         '''
         result = []
         keypoint_list = []
+        if sentence_result == None:
+            result = []
+            return result
         for subsentence in sentence_result:
             keypoint = subsentence['keypoint']
             sentence_num = subsentence['sen_num']
@@ -144,16 +145,48 @@ class Important_point(object):
             return result
 
     def run(self,dialog, topic, method=levenshteinStr):
+        '''
+        对某个业务分类下的单个对话，获取关键点及对应的句子
+        :param  dialog: list,每一项为一个句子
+                        示例：[
+                                {
+                                    "target": "坐席",
+                                    "speech": "王先 生您好有什么可以帮您",
+                                    "start_time": "0.00",
+                                    "end_time": "3.83"
+                                },,,,
+                            ]
+        :param  topic:  string，业务分类，示例：'现金分期'
+        :param  method: function，算法，该代码可选择两种算法，Levenshtein，w2v_model
+        :return result: list, 每一项为这段话匹配到的关键点之一，
+                        格式：[
+                                {'keypoint':'',
+                                'matched':[{'sentence':'', 
+                                            'compared_source':'', 
+                                            'source_sentence':'', 
+                                            'score':},
+                                            {},,,
+                                        ]
+                                },
+                                {},
+                            ]
+                            keypoint：关键点名称，matched：关键点匹配到的句子，matched中每一项为匹配到的一个子句，包含的子句信息包括：sentence:匹配到的子句，source_sentence：子句所在的对话中的原句，compared_source：匹配库中的原句，score:相似度分值
+            示例：
+            [{'keypoint': '14.解释关键信息', 
+              'matched': [ {'score': 0.76, 
+                            'compared_source': '有什么疑问您可以随时致电我们客服热线。', 
+                            'sentence': '王先 生您好有什么可', 
+                            'source_sentence': '王先 生您好有什么可以帮您'},]
+            }]
+        '''
         subsentence_list, index_sentence = self.deal_dialog(dialog, topic,10,3) # 分句 滑窗大小N=10，滑窗步长step=3
-        # print(index_sentence)
         dialog_result = self.subsenlist_simi(subsentence_list,topic,method) # 对分句结果list获取匹配结果
-        # print(dialog_result)
         result = self.result_format(sentence_result=dialog_result,source_index=index_sentence)
-        print(result)
+        return result
 
 if __name__ == '__main__':
 
-    import_point = Important_point(compare_corpus_path='data/compare_corpus_11.json')
+    key_point = KeyPoint(compare_corpus_path='data/compare_corpus_11.json')
     dialog = [
             {
                 "target": "坐席",
@@ -271,13 +304,5 @@ if __name__ == '__main__':
             }
         ]
     topic = '现金分期'
-    import_point.run(dialog,topic,w2v_model)
-
-        # 单个对话
-        # [{"keypoint": "", "matched": [{"matched": "", "source": "", "score":float, "long"},
-        #                                 {},
-        #                                 ]},
-        # {"keypoint": "", "matched": [{"matched": "", "source": "", "score":float, "long"},
-        # {},
-        # ]}
-        # ]
+    result = key_point.run(dialog,topic,w2v_model)#w2v_model,levenshteinStr
+    print(result)
