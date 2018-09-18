@@ -8,7 +8,7 @@ def corpus(path):
     :param path: ‘./corpus_19.json’
     :return: {"申请办卡"：["要办卡"]}
     '''
-    with open(path, 'r')as f:
+    with open(path, 'r', encoding="utf-8")as f:
         corpus = json.load(f)
     return corpus
 
@@ -112,12 +112,15 @@ def w2v_model(sentence,simi_list,threshold,model):
             pass
         else:
             candidate_list = list(jieba.cut(candidate))
-            score = model_loaded.n_similarity(words_new, candidate_list)
+            try:
+                score = model_loaded.n_similarity(words_new, candidate_list)
+            except Exception:
+                print("words_new:", words_new, "candidate_list:", candidate_list)
+                exit()
             if score > sim_temp:
                 sim_temp = score
                 sim_temp_list = [sim_temp, sentence, candidate]
             else:
-
                 continue
     if not sim_temp_list:
         return None
