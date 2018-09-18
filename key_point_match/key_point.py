@@ -1,3 +1,9 @@
+'''
+created by xuhong 2018/9/18
+更改:   1.匹配库增添每个关键点的阈值
+        2.完善了多种算法的选择，通过传method（string）参数选择算法，method可选'levenshtein' or 'word2vec'
+        3.完善了function的注释
+'''
 import json
 from utils import *
 from ml_classify import *
@@ -5,39 +11,43 @@ from ml_classify import *
 
 class KeyPoint(object):
     def __init__(self, compare_corpus_path='data/compare_corpus_11.json'):
-        compare_corpus = corpus(compare_corpus_path)
+        compare_corpus = corpus(compare_corpus_path) # 加载匹配库
         self.corpus_xjfq = compare_corpus['现金分期']
         self.corpus_kksm = compare_corpus['设置密码']
         # self.corpus_vector_kksm = getsimlist_vec()  # TODO
-        self.model_path = 'model/word2vec_include.model'
+        self.model_path = 'model/word2vec_include.model' # 加载word2vec 模型
         self.model_loaded = Word2Vec.load(self.model_path)
 
-    def get_similarity(self, topic, method, sentence, threshold=0.7):
+    def get_similarity(self, topic, method, sentence):
         '''
         单句与匹配库匹配,返回高于每项设定的阈值的关键点的最高相似度,有多个点的取最高的
         :param topic: string, '现金分期'
-        :param method: function, levenshteinStr()
+        :param method: string, 'levenshtein' or 'word2vec'
         :param sentence: string
-        :param threshold: float,单句匹配阈值0.7
         :return result: {'sentence': "subsentence",'keypoint':'', 'score':'', 'compared_source':'匹配库句子'}
         '''
-        # 加载匹配库
-        sim_corpus_kksm = self.corpus_kksm
-        sim_corpus_xjfq = self.corpus_xjfq
         result = []
-        if topic == '现金分期':
-            sim_corpus = sim_corpus_xjfq
-        elif topic == '设置密码':
-            sim_corpus = sim_corpus_kksm
         multi_keypoint = []
+        if topic == '现金分期':
+            sim_corpus = self.corpus_xjfq
+        elif topic == '设置密码':
+            sim_corpus = self.corpus_kksm
+        else:
+            print('暂不支持该业务分类下的关键点提取！')
         for key in sim_corpus.keys():
             keypoint_dic = {'keypoint': key, 'score': 0, 'compared_source': ''}
             top1_score = 0
             top1_key = ''
             top1_source = ''
-            sim_list = sim_corpus[key]
-            score_result = method(sentence, sim_list,
-                                  threshold, model=self.model_loaded)
+            sim_list = sim_corpus[key]['compared_corpus']
+            if method == 'levenshtein':
+                threshold = sim_corpus[key]['threshold']['levenshtein']
+                score_result = levenshteinStr(sentence, sim_list,
+                                  threshold)
+            elif method == 'word2vec':
+                threshold = sim_corpus[key]['threshold']['word2vec']
+                score_result = levenshteinStr(sentence, sim_list,
+                                  threshold)
             if score_result != None:
                 score = score_result[0]
                 if score > top1_score:
@@ -49,7 +59,7 @@ class KeyPoint(object):
                 keypoint_dic = {'keypoint': key, 'score': top1_score,
                                 'compared_source': top1_compared_sentence}
                 multi_keypoint.append(keypoint_dic)
-        if len(multi_keypoint) > 1:
+        if len(multi_keypoint) > 1: # 子句匹配到多个关键点时，取相似度分值最高的
             result = top_keypoint(multi_keypoint)
             result['sentence'] = sentence
         elif len(multi_keypoint) == 1:
@@ -63,12 +73,12 @@ class KeyPoint(object):
         '''
         处理输入的一段对话
         只取客服的句子，滑动窗口：对输入字符串按照窗口大小N以步长step取出，返回字符串数组
-        :param dialog: [{"target": "坐席", "speech": "王先生您好有什么可以帮您", "start_time": "0.00", "end_time": "3.83"},{}]
-        :param topic:'现金分期'
-        :param N:切分句子滑动窗口大小 10
-        :param step:滑窗步长 3
-        :return subsentence:[{'sentence':subsentence1,'sen_num': num},{'sentence':subsentence2,'sen_num': num}...]
-        :return index_sentence:{num: "source sentence"}
+        :param dialog: list, [{"target": "坐席", "speech": "王先生您好有什么可以帮您", "start_time": "0.00", "end_time": "3.83"},{}]
+        :param topic: string, '现金分期'
+        :param N: int, 切分句子滑动窗口大小 10
+        :param step: int, 滑窗步长 3
+        :return subsentence: list, [{'sentence':subsentence1,'sen_num': num},{'sentence':subsentence2,'sen_num': num}...]
+        :return index_sentence: dict, {num: "source sentence"}
         '''
         sentence = []
         subsentence = []
@@ -97,20 +107,20 @@ class KeyPoint(object):
                         subsentence.append(subsen)
         return subsentence, index_sentence
 
-    def subsenlist_simi(self, subsentence_list, topic, method=levenshteinStr):
+    def subsenlist_simi(self, subsentence_list, topic, method='levenshtein'):
         '''
         对子句list进行相似度匹配，返回每个子句对应的关键点以及该关键点的相似度分值
-        :param subsentence_list:[{'sentence':subsentence1,'sen_num': num},...]
-        :param topic:'现金分期'
-        :param method:用到的算法，默认为levenshtein
-        :return result:[{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。'}, ]
+        :param subsentence_list: list, [{'sentence':subsentence1,'sen_num': num},...]
+        :param topic: string, '现金分期'
+        :param method: string, 用到的算法，默认为levenshtein 可选'word2vec'
+        :return result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。'}, ]
         '''
         result = []
         for subsentence in subsentence_list:
             sentence = subsentence['sentence']
             sentence_num = subsentence['sen_num']
             subsentence_result = self.get_similarity(
-                topic, method, sentence, threshold=0.3)
+                topic, method, sentence)
             # print('subsentence_result:')
             # print(subsentence_result)
             if subsentence_result != None:
@@ -124,9 +134,9 @@ class KeyPoint(object):
     def result_format(self, sentence_result, source_index=None):
         '''
         获取最终结果格式
-        :param sentence_result:[{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。'}, ]
-        :source_index:dict，句子index，用于获取子句对应的原句
-        :return result:[{'keypoint':'关键点1','matched':[{"matched_sentence": "subsentence", "compared_sentence": "匹配库句子", "score":float, "source_sentence":str}]}]
+        :param sentence_result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。'}, ]
+        :source_index: dict, 句子index，用于获取子句对应的原句
+        :return result: list, [{'keypoint':'关键点1','matched':[{"matched_sentence": "subsentence", "compared_sentence": "匹配库句子", "score":float, "source_sentence":str}]}]
         '''
         result = []
         keypoint_list = []
@@ -150,7 +160,7 @@ class KeyPoint(object):
         else:
             return result
 
-    def run(self, dialog, topic, method=levenshteinStr):
+    def run(self, dialog, topic, method):
         '''
         对某个业务分类下的单个对话，获取关键点及对应的句子
         :param  dialog: list,每一项为一个句子
@@ -163,7 +173,7 @@ class KeyPoint(object):
                                 },,,,
                             ]
         :param  topic:  string，业务分类，示例：'现金分期'
-        :param  method: function，算法，该代码可选择两种算法，Levenshtein，w2v_model
+        :param  method: string，该代码可选择两种算法，'levenshtein' or 'word2vec'
         :return result: list, 每一项为这段话匹配到的关键点之一，
                         格式：[
                                 {'keypoint':'',
@@ -315,5 +325,5 @@ if __name__ == '__main__':
     ]
     topic = '现金分期'
     # w2v_model,levenshteinStr
-    result = key_point.run(dialog, topic, levenshteinStr)
+    result = key_point.run(dialog, topic, method='levenshtein')
     print(result)
