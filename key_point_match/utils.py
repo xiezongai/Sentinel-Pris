@@ -1,6 +1,9 @@
 import json,copy
 import Levenshtein
 import linecache
+from gensim.models import Word2Vec
+import numpy as np
+import jieba
 
 def corpus(path):
     '''
@@ -47,7 +50,7 @@ def sentenceSplit(string, N, step):
         point = point + step
     return res
 
-def levenshteinStr(sentence, simlist, threshold, model=None):
+def levenshteinStr(sentence, simlist, threshold):
     """
     单句与匹配句子list做相似度计算，返回相似度分值最高的一个
     :param sentence:string, 原句
@@ -81,10 +84,6 @@ def top_keypoint(keypoints):
     index = score_forindex.index(score[-1])
     top1_keypoint = keypoints[index]
     return top1_keypoint
-
-from gensim.models import Word2Vec
-import numpy as np
-import jieba
 
 def w2v_model(sentence,simi_list,threshold,model):
     '''
