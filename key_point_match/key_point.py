@@ -177,10 +177,13 @@ class KeyPoint(object):
         :return result: list, 每一项为这段话匹配到的关键点之一，
                         格式：[
                                 {'keypoint':'',
-                                'matched':[{'sentence':'', 
-                                            'compared_source':'', 
-                                            'source_sentence':'', 
-                                            'score':},
+                                'matched':[{'sentence':'',  # 切割后的句子
+                                            'compared_source':'',  # 匹配库中的句子
+                                            'source_sentence':'',  # 对话中的原句（未切割）
+                                            'score': float,
+                                            "start_time": "08:06:38",
+                                            "end_time": "08:06:43",
+                                            },
                                             {},,,
                                         ]
                                 },
