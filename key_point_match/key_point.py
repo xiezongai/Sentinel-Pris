@@ -74,7 +74,7 @@ class KeyPoint(object):
         :param topic: string, '现金分期'
         :param N: int, 切分句子滑动窗口大小 10
         :param step: int, 滑窗步长 3
-        :return subsentence: list, [{'sentence':subsentence1,'sen_num': num},{'sentence':subsentence2,'sen_num': num}...]
+        :return subsentence: list, [{'sentence':subsentence1,'sen_num': num, 'start_time':start_time 'end_time':end_time},{'sentence':subsentence2,'sen_num': num,'start_time':start_time 'end_time':end_time}...]
         :return index_sentence: dict, {num: "source sentence"}
         '''
         sentence = []
@@ -100,25 +100,30 @@ class KeyPoint(object):
                         res.append(string[point - N: point])
                         point = point + step
                     for item in res:
-                        subsen = {'sentence': item, 'sen_num': sen_num}
+                        subsen = {'sentence': item, 'sen_num': each_pare["sen_num"], 'start_time': each_pare["start_time"],'end_time': each_pare["end_time"]}
                         subsentence.append(subsen)
         return subsentence, index_sentence
 
     def subsenlist_simi(self, subsentence_list, topic, method='levenshtein'):
         '''
         对子句list进行相似度匹配，返回每个子句对应的关键点以及该关键点的相似度分值
-        :param subsentence_list: list, [{'sentence':subsentence1,'sen_num': num},...]
+        来自同一个源句的多个子句属于同一个关键点，取分值最高的那个
+        :param subsentence_list: list, [{'sentence':subsentence1,'sen_num': num, 'start_time':start_time 'end_time':end_time},...]
         :param topic: string, '现金分期'
         :param method: string, 用到的算法，默认为levenshtein 可选'word2vec'
-        :return result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。'}, ]
+        :return result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。', 'start_time':start_time, 'end_time':end_time}, ]
         '''
         result = []
         for subsentence in subsentence_list:
             sentence = subsentence['sentence']
-            sentence_num = subsentence['sen_num']
-            subsentence_result = self.get_similarity(topic, method, sentence)
+            subsentence_result = self.get_similarity(
+                topic, method, sentence)
+            # score = subsentence_result['score']
+            # 
             if subsentence_result != None:
-                subsentence_result['sen_num'] = sentence_num
+                subsentence_result['sen_num'] = subsentence['sen_num']
+                subsentence_result['start_time'] = subsentence['start_time']
+                subsentence_result['end_time'] = subsentence['end_time']
                 result.append(subsentence_result)
         if result == []:
             return None
@@ -128,9 +133,9 @@ class KeyPoint(object):
     def result_format(self, sentence_result, source_index=None):
         '''
         获取最终结果格式
-        :param sentence_result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。'}, ]
+        :param sentence_result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。', 'start_time':start_time, 'end_time':end_time}, ]
         :source_index: dict, 句子index，用于获取子句对应的原句
-        :return result: list, [{'keypoint':'关键点1','matched':[{"matched_sentence": "subsentence", "compared_sentence": "匹配库句子", "score":float, "source_sentence":str}]}]
+        :return result: list, [{'keypoint':'关键点1','matched':[{"matched_sentence": "subsentence", "compared_sentence": "匹配库句子", "score":float, "source_sentence":str, 'start_time':start_time, 'end_time':end_time}]}]
         '''
         result = []
         keypoint_list = []
