@@ -2,7 +2,7 @@
     "现金分期": {
         "13.提示交易记录": {
             "threshold": {
-                "word2vec": 0.7,
+                "word2vec": 0.8,
                 "levenshtein": 0.3
             },
             "compared_corpus": [

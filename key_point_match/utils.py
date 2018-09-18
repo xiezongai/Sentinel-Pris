@@ -4,6 +4,13 @@ import linecache
 from gensim.models import Word2Vec
 import numpy as np
 import jieba
+from scipy.spatial.distance import pdist
+
+
+wordvec_size =300
+zero_pad = [0 for n in range(wordvec_size)]
+model_path= "model/word2vec_include.model"
+model_loaded= Word2Vec.load(model_path)
 
 def corpus(path):
     '''
@@ -85,43 +92,97 @@ def top_keypoint(keypoints):
     top1_keypoint = keypoints[index]
     return top1_keypoint
 
-def w2v_model(sentence,simi_list,threshold,model):
-    '''
-    :param sentence: 输入单句
-    :param simi_list: 匹配库
-    :param threshold: 输出相似度最大的句子的阈值
-    :return: [score, source_sentence, matched_sentence]
-    '''
-    model_loaded = model
-    words = list(jieba.cut(sentence.strip()))
-    words_new=[]
-    for each_slice in words:
-        try:
-             vocab = model_loaded[each_slice]
-             words_new.append(each_slice)
-        except KeyError:
-            print("not in vocabulary")
+def w2v_model_new(sentence, simi_list, threshold):
+    """
+    
+    @param sentence:str
+    @param simi_list:  [{"sentence":str, "array":array}]
+    @return sim_temp_list:[score, "sentence", "匹配句"]
+    """
+    sentence_vec=get_vec(sentence)
+   # print(len(sentence_vec[1]))
 
     sim_temp_list = []
     sim_temp = float(threshold)
-   # print(simi_list)
-    for candidate in simi_list:
-        score = 0
-        if candidate == '':
-            pass
+    #print('simi',simi_list)
+    for eachsim in simi_list:
+        # print("eachsim", eachsim)
+        score = getscore(sentence_vec[1], eachsim['array'])
+        if score > sim_temp:
+            sim_temp = score
+            sim_temp_list = [sim_temp, get_vec(sentence)[0], eachsim['sentence']]
         else:
-            candidate_list = list(jieba.cut(candidate))
-            try:
-                score = model_loaded.n_similarity(words_new, candidate_list)
-            except Exception:
-                print("words_new:", words_new, "candidate_list:", candidate_list)
-                exit()
-            if score > sim_temp:
-                sim_temp = score
-                sim_temp_list = [sim_temp, sentence, candidate]
-            else:
-                continue
+            continue
     if not sim_temp_list:
         return None
     else:
         return sim_temp_list
+
+def getsimlist_vec(list):
+    """
+    匹配库向量化
+    :param list: ["", ""]
+    :return: [{"sentence": str, "array": np.array([])}]
+    """
+    result = []
+    for eachsentence in list:
+        wordlist = jieba.cut(eachsentence)
+        #wordlist = [word for word in list(wordlist) if word not in stopwordlist]
+        count = 0
+        sum = zero_pad
+        for eachword in wordlist:
+            try:
+                temp = model_loaded[eachword]
+                count = count + 1
+            except KeyError:
+                temp = zero_pad
+            sum = np.array(sum) + np.array(temp)
+        if count == 0:
+            continue
+        result.append({"sentence": eachsentence, "array": sum / count})
+    return result
+    
+def getscore(sentence_vec, sim_vec):
+    """
+    计算两个向量的余弦相似度
+    :param sentence_vec: np.array([]))
+    :param sim_vec: np.array([]))
+    :return: score
+    """
+    if list(sentence_vec) == list(zero_pad):
+        score = 1
+    else:
+        score = pdist(np.vstack([sentence_vec, sim_vec]), 'cosine')
+    return 1 - score
+
+
+def stopwordslist(filepath):
+    #stoplist = {}.fromkeys([line.strip() for line in open(filepath,encoding='utf-8')])
+    stoplist =[]
+    with open(filepath,'r',encoding='utf-8') as f:
+        for line in f:
+            stoplist.append(line)
+
+    return stoplist
+
+def get_vec(sentence):
+    s = jieba.cut(sentence)
+    count = 0
+    sum = zero_pad
+
+    for eachword in s:
+        try:
+            temp = model_loaded[eachword]
+            count = count + 1
+        except KeyError:
+            temp = zero_pad
+        sum = np.array(sum) + np.array(temp)
+    x = {}
+    if count == 0:
+        x[0] = sentence
+        x[1] = zero_pad
+        return x
+    else:
+        x[0] = sentence
+        x[1] = sum / count
+        return x
