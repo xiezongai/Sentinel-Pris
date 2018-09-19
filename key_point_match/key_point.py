@@ -6,6 +6,7 @@ created by xuhong 2018/9/18
 '''
 import json
 import copy
+import time
 from utils import *
 
 
@@ -161,7 +162,7 @@ class KeyPoint(object):
 
     def run_levenshtein(self, transcripts, topic):
         '''
-        对某个业务分类下的单个对话，获取关键点及对应的句子
+        对某个业务分类下的单个对话，获取关键点及对应的句子.如果没有检测到任何关键点，返回一个空[]
         :param  transcripts: list,每一项为一个句子
                         示例：[
                                 {
@@ -206,7 +207,7 @@ class KeyPoint(object):
 
     def run_word2vec(self, transcripts, topic):
         '''
-        对某个业务分类下的单个对话，获取关键点及对应的句子
+        对某个业务分类下的单个对话，获取关键点及对应的句子.如果没有检测到任何关键点，返回一个空[]
         :param  transcripts: list,每一项为一个句子
                         示例：[
                                 {
@@ -260,11 +261,49 @@ class KeyPoint(object):
             sentence_result=dialog_result, source_index=index_sentence)
         return result
 
+    def test(self, dialogs):
+        '''
+        测试多个对话  # TODO 多种算法合并结果
+        @param dialogs : [{"transcripts": [{},{}], "dialog_id": str, "topic":str}, {"transcripts": [{},{}], "dialog_id": str,"topic":str}]
+        @return 只返回matched到的对话,[{
+            "dialog_id": str,
+            "matched": [
+                            {'keypoint':'',
+                            'matched':[{'sentence':'',  # 切割后的句子
+                                        'compared_source':'',  # 匹配库中的句子
+                                        'source_sentence':'',  # 对话中的原句（未切割）
+                                        'score': float,
+                                        "keywords": str,      # 匹配到的关键词
+                                        "start_time": "08:06:38",
+                                        "end_time": "08:06:43",
+                                        },
+                                        {},,,
+                                ]
+                            },
+                            {},
+                        ],
+            "transcripts": str(dumped)
+            }]
+        '''
+        result = []
+        for dialog in dialogs:
+            dialog_id = dialog["dialog_id"]
+            transcripts = dialog["transcripts"]
+            topic = dialog["topic"]
+            keypoint_matched = self.run_levenshtein(transcripts=transcripts, topic=topic)
+            if keypoint_matched != []:
+                result.append({
+                    "dialog_id": dialog_id,
+                    "transcripts": json.dumps(transcripts, ensure_ascii=False),
+                    "matched": keypoint_matched
+                })
+        return result
+
 
 if __name__ == '__main__':
 
     key_point = KeyPoint(compare_corpus_path='data/compare_corpus_11.json')
-    dialog = [
+    transcripts = [
         {
             "target": "坐席",
             "speech": "王先 生您好有什么可以帮您",
@@ -381,6 +420,11 @@ if __name__ == '__main__':
         }
     ]
     topic = '现金分期'
-    # word2vec,levenshteinStr
-    result = key_point.run_word2vec(transcripts=dialog, topic=topic)
-    print(result)
+    
+    result = key_point.run_word2vec(transcripts=transcripts, topic=topic)
+    print("测试单个对话:", result)
+
+    # test dialogs,后台实际调用的function
+    t1 = time.time()
+    dialogs = [{"transcripts": transcripts, "dialog_id": "dfrvfv", "topic":topic}]
+    print("测试多个对话：", key_point.test(dialogs=dialogs), time.time()-t1)
