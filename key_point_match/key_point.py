@@ -159,10 +159,10 @@ class KeyPoint(object):
         else:
             return result
 
-    def run_levenshtein(self, dialog, topic):
+    def run_levenshtein(self, transcripts, topic):
         '''
         对某个业务分类下的单个对话，获取关键点及对应的句子
-        :param  dialog: list,每一项为一个句子
+        :param  transcripts: list,每一项为一个句子
                         示例：[
                                 {
                                     "target": "坐席",
@@ -172,7 +172,6 @@ class KeyPoint(object):
                                 },,,,
                             ]
         :param  topic:  string，业务分类，示例：'现金分期'
-        :param  method: string，该代码可选择两种算法，'levenshtein' or 'word2vec'
         :return result: list, 每一项为这段话匹配到的关键点之一，
                         格式：[
                                 {'keypoint':'',
@@ -198,17 +197,17 @@ class KeyPoint(object):
             }]
         '''
         subsentence_list, index_sentence = self.deal_dialog(
-            dialog, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
+            transcripts, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
         dialog_result = self.subsenlist_simi(
             subsentence_list, topic, method="levenshtein")  # 对分句结果list获取匹配结果
         result = self.result_format(
             sentence_result=dialog_result, source_index=index_sentence)
         return result
 
-    def run_word2vec(self, dialog, topic):
+    def run_word2vec(self, transcripts, topic):
         '''
         对某个业务分类下的单个对话，获取关键点及对应的句子
-        :param  dialog: list,每一项为一个句子
+        :param  transcripts: list,每一项为一个句子
                         示例：[
                                 {
                                     "target": "坐席",
@@ -218,7 +217,6 @@ class KeyPoint(object):
                                 },,,,
                             ]
         :param  topic:  string，业务分类，示例：'现金分期'
-        :param  method: string，'word2vec'
         :return result: list, 每一项为这段话匹配到的关键点之一，
                         格式：[
                                 {'keypoint':'',
@@ -245,13 +243,15 @@ class KeyPoint(object):
         '''
         # subsentence_list, index_sentence = self.deal_dialog(
         #     dialog, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
-        # [{'sentence':subsentence1,'sen_num': num},{'sentence':subsentence2,'sen_num': num}...]
+        # [{'sentence':subsentence1,'sen_num': num, 'start_time': str, "end_time": str}]
         subsentence_list = []
         index_sentence = {}  # {num: "source sentence"}
-        for i, item in enumerate(dialog):
+        for i, item in enumerate(transcripts):
             subsentence_list.append({
                 "sentence": item["speech"],
-                'sen_num': i
+                'sen_num': i,
+                "start_time": item['start_time'],
+                "end_time": item['end_time']
             })
             index_sentence[i] = item["speech"]
         dialog_result = self.subsenlist_simi(
@@ -382,5 +382,5 @@ if __name__ == '__main__':
     ]
     topic = '现金分期'
     # word2vec,levenshteinStr
-    result = key_point.run_levenshtein(dialog, topic)
+    result = key_point.run_word2vec(transcripts=dialog, topic=topic)
     print(result)
