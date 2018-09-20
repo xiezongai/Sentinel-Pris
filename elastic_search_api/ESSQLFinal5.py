@@ -91,6 +91,26 @@ class ESSearch:
             return_dict["silence_max"]=i['_source']['silence_max']
             return_list.append(return_dict)
         return return_list     
+        
+    def search_dialog_by_time_range(self,timestart,timeend):
+        """
+        Description: 返回符合时间要求的索引内容
+        Params: timestart,timeend:<string>  例:'2018-09-15 01:01:01'
+        Return:
+        [{'callee_no': '98076', 'machine_score': 0, 'updatetime': '2018-09-15T02:33:13.000Z', '@version': '1', 'caller_no': '14213', 'transcripts': 'pass', 'is_manual_rated': False, 'end_time': '2018-07-31T08:02:08.000Z', 'begin_time': '2018-07-31T07:59:07.000Z', 'silence': 0.0, 'manual_rating': '', 'id': 'f0ada676-b7b4-11e8-b833-3c404f107c90', '@timestamp': '2018-09-15T04:33:00.340Z', 'call_id': '1520948153-263390', 'emotion': '', 'created_at': '2018-09-07T12:41:03.000Z', 'interruption': '', 'manual_score': 0, 'status': 3, 'session_id': '80f705de-a1e0-11e8-a9a0-784f437148a2'},{}...]
+        """
+        timestart=timestart.split(' ')
+        timestart=timestart[0]+'T'+timestart[1]+'.000Z'
+        timeend=timeend.split(' ')
+        timeend=timeend[0]+'T'+timeend[1]+'.000Z'
+        body = {"query": { "bool": {"must":
+            [{"range": {'begin_time': {"gt": timestart}}},
+             {"range": {'end_time': {"lt": timeend}}}]}}}
+        res = self.es.search(index = self.index,body = body)
+        return_list = []
+        for i in res['hits']['hits']:
+            return_list.append(i['_source'])
+        return return_list
     
     def search_dialog_by_text_1(self, sentence, mode="fuzzy"):
         """
@@ -140,6 +160,55 @@ class ESSearch:
             return_list.append(return_dict)
         return return_list        
         
+    def search_dialog_by_text_3(self, sentence, logic="and", mode="fuzzy"):
+        '''
+        Description:按逻辑’或‘和’与‘进行组合模糊查询
+        params: sentence:list of string ,logic:'and'或'or'
+        Return:
+        [{'transcripts':<string>,'highlight':<string>},{}...]
+        '''
+        match_list=[]
+        if logic == 'and':        
+            bool_type = 'must'
+        elif logic == 'or':
+            bool_type = 'should'        
+        for i in sentence:
+            match_list.append({'match':{'transcripts':i}})
+        body = {"query": {"bool":{bool_type:match_list}},
+                "highlight": {"fields": {"transcripts": {"pre_tags": [""],"post_tags": [""]}}}}
+        res = self.es.search(index=self.index, body=body)
+        return_dict={}
+        return_list=[]
+        for i in res['hits']['hits']:
+            return_dict["transcripts"]=i['_source']['transcripts']
+            return_dict["highlight"]=i['highlight']
+            return_list.append(return_dict)
+        return return_list
+    
+    def search_dialog_by_text_4(self, sentence, logic="and", mode="accurate"):
+        '''
+        Description:按逻辑’或‘和’与‘进行组合精确查询
+        params: sentence:list of string ,logic:'and'或'or'
+        Return:
+        [{'transcripts':<string>,'highlight':<string>},{}...]
+        '''
+        match_list=[]
+        if logic == 'and':        
+            bool_type = 'must'
+        elif logic == 'or':
+            bool_type = 'should'        
+        for i in sentence:
+            match_list.append({'match_phrase':{'transcripts':{'query':i}}})
+        body = {"query": {"bool":{bool_type:match_list}},
+                "highlight": {"fields": {"transcripts": {"pre_tags": [""],"post_tags": [""]}}}}
+        res = self.es.search(index=self.index, body=body)
+        return_dict={}
+        return_list=[]
+        for i in res['hits']['hits']:
+            return_dict["transcripts"]=i['_source']['transcripts']
+            return_dict["highlight"]=i['highlight']
+            return_list.append(return_dict)
+        return return_list
 
     
 if __name__ == '__main__': 
@@ -151,11 +220,16 @@ if __name__ == '__main__':
     #ESSearch.search_dialog_by_silence()#缺少字段，无法测试    
     c=ESSearch.search_dialog_by_text_1('现金分期的业务办理')
     d=ESSearch.search_dialog_by_text_2('噢还在这不能用那唉那我这个呃假如说你刚才算南十万就是说消费我就说柜台可以')
+    e=ESSearch.search_dialog_by_text_3(['圆梦金','分期','储蓄卡'])
+    f=ESSearch.search_dialog_by_text_4(['圆梦金','分期','储蓄卡'],logic='and')
+    g=ESSearch.search_dialog_by_time_range('2018-07-31 07:00:00','2018-07-31 09:00:00')
     print('testing search_dialog_by_call_id','\n',a,'\n')
     print('testing search_dialog_by_session_id','\n',b,'\n')
     print('testing search_dialog_by_text_1','\n',c,'\n')
     print('testing search_dialog_by_text_2','\n',d,'\n')
-    
+    print('testing search_dialog_by_text_3','\n',e,'\n')
+    print('testing search_dialog_by_text_4','\n',f,'\n')
+    print('testing search_dialog_by_time_range','\n',g,'\n')
     
     
     
