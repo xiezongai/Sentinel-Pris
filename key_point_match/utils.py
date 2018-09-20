@@ -1,4 +1,4 @@
-import json,copy
+import json,copy,re
 import Levenshtein
 import linecache
 from gensim.models import Word2Vec
@@ -186,3 +186,19 @@ def get_vec(sentence):
         x[0] = sentence
         x[1] = sum / count
         return x
+
+def regular(sentence, keywords):
+    """
+    单句与keywords做正则匹配，包含keywords里的任意一个则匹配成功
+    :param sentence:string, 原句
+    :param keywords:list, keywords list
+    :return [score=1, source_sentence,'' ,matched_pattern]
+    """
+    matched_list = []
+    if keywords == []:
+        return None
+    else:
+        for pattern in keywords:
+            if re.search(pattern, sentence):
+                return [1, sentence, '', pattern]
+        return None
