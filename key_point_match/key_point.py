@@ -466,7 +466,7 @@ if __name__ == '__main__':
         }
     ]
     topic = '现金分期'
-    result = key_point.run_word2vec(transcripts=transcripts, topic=topic)
+    result = key_point.run_regex(transcripts=transcripts, topic=topic)
     print("测试单个对话:", result)
     exit()
 
