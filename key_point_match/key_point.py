@@ -3,9 +3,11 @@ created by xuhong 2018/9/18
 更改:   1.匹配库增添每个关键点的阈值
         2.完善了多种算法的选择，通过传method（string）参数选择算法，method可选'levenshtein' or 'word2vec'
         3.完善了function的注释
+TODO: test合并结果，注意run方法返回的格式不一致
 '''
 import json
 import copy
+import time
 from utils import *
 
 
@@ -22,7 +24,7 @@ class KeyPoint(object):
         '''
         单句与匹配库匹配,返回高于每项设定的阈值的关键点的最高相似度,有多个点的取最高的
         :param topic: string, '现金分期'
-        :param method: string, 'levenshtein' or 'word2vec' or 're'
+        :param method: string, 'levenshtein' or 'word2vec' or 'regex'
         :param sentence: string
         :return result: {'sentence': "subsentence",'keypoint':'', 'score':'', 'compared_source':'匹配库句子'}
                 当使用regex方法时,返回结果为{'sentence': sentence,'keypoint':'', 'score':1, 'compared_source':'', 'matched_pattern':''}
@@ -45,7 +47,7 @@ class KeyPoint(object):
             elif method == 'word2vec':
                 threshold = sim_corpus[key]['threshold']['word2vec']
                 score_result = w2v_model_new(sentence, self.compare_corpus_vector[topic][key]["compared_corpus"], threshold)
-            elif method == 're':
+            elif method == 'regex':
                 re_patterns = sim_corpus[key]['patterns']
                 score_result = regex(sentence, re_patterns)
                 if score_result != None:
@@ -117,7 +119,7 @@ class KeyPoint(object):
         来自同一个源句的多个子句属于同一个关键点，取分值最高的那个
         :param subsentence_list: list, [{'sentence':subsentence1,'sen_num': num, 'start_time':start_time 'end_time':end_time},...]
         :param topic: string, '现金分期'
-        :param method: string, 用到的算法，默认为levenshtein 可选'word2vec' or 're'
+        :param method: string, 用到的算法，默认为levenshtein 可选'word2vec' or 'regex'
         :return result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。', 'start_time':start_time, 'end_time':end_time}, ]
         '''
         result = []
@@ -168,7 +170,7 @@ class KeyPoint(object):
 
     def run_levenshtein(self, transcripts, topic):
         '''
-        对某个业务分类下的单个对话，获取关键点及对应的句子
+        对某个业务分类下的单个对话，获取关键点及对应的句子.如果没有检测到任何关键点，返回一个空[]
         :param  transcripts: list,每一项为一个句子
                         示例：[
                                 {
@@ -182,12 +184,13 @@ class KeyPoint(object):
         :return result: list, 每一项为这段话匹配到的关键点之一，
                         格式：[
                                 {'keypoint':'',
-                                'matched':[{'sentence':'',  # 切割后的句子
+                                'matched':[{'sentence':'',         # 切割后的句子
                                             'compared_source':'',  # 匹配库中的句子
                                             'source_sentence':'',  # 对话中的原句（未切割）
                                             'score': float,
                                             "start_time": "08:06:38",
                                             "end_time": "08:06:43",
+                                            "regex": str
                                             },
                                             {},,,
                                         ]
@@ -195,13 +198,6 @@ class KeyPoint(object):
                                 {},
                             ]
                             keypoint：关键点名称，matched：关键点匹配到的句子，matched中每一项为匹配到的一个子句，包含的子句信息包括：sentence:匹配到的子句，source_sentence：子句所在的对话中的原句，compared_source：匹配库中的原句，score:相似度分值
-            示例：
-            [{'keypoint': '14.解释关键信息', 
-              'matched': [ {'score': 0.76, 
-                            'compared_source': '有什么疑问您可以随时致电我们客服热线。', 
-                            'sentence': '王先 生您好有什么可', 
-                            'source_sentence': '王先 生您好有什么可以帮您'},]
-            }]
         '''
         subsentence_list, index_sentence = self.deal_dialog(
             transcripts, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
@@ -217,7 +213,7 @@ class KeyPoint(object):
 
     def run_word2vec(self, transcripts, topic):
         '''
-        对某个业务分类下的单个对话，获取关键点及对应的句子
+        对某个业务分类下的单个对话，获取关键点及对应的句子.如果没有检测到任何关键点，返回一个空[]
         :param  transcripts: list,每一项为一个句子
                         示例：[
                                 {
@@ -237,6 +233,7 @@ class KeyPoint(object):
                                             'score': float,
                                             "start_time": "08:06:38",
                                             "end_time": "08:06:43",
+                                            "regex": str
                                             },
                                             {},,,
                                         ]
@@ -244,13 +241,6 @@ class KeyPoint(object):
                                 {},
                             ]
                             keypoint：关键点名称，matched：关键点匹配到的句子，matched中每一项为匹配到的一个子句，包含的子句信息包括：sentence:匹配到的子句，source_sentence：子句所在的对话中的原句，compared_source：匹配库中的原句，score:相似度分值
-            示例：
-            [{'keypoint': '14.解释关键信息', 
-              'matched': [ {'score': 0.76, 
-                            'compared_source': '有什么疑问您可以随时致电我们客服热线。', 
-                            'sentence': '王先 生您好有什么可', 
-                            'source_sentence': '王先 生您好有什么可以帮您'},]
-            }]
         '''
         # subsentence_list, index_sentence = self.deal_dialog(
         #     dialog, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
@@ -293,19 +283,13 @@ class KeyPoint(object):
                                             'score': float,
                                             "start_time": "08:06:38",
                                             "end_time": "08:06:43",
+                                            "regex": str
                                             },
                                             {},,,
                                         ]
                                 },
                                 {},
                             ]
-            示例：
-            [{'keypoint': '14.解释关键信息', 
-                'matched': [ {'score': 0.76, 
-                            'compared_source': '有什么疑问您可以随时致电我们客服热线。', 
-                            'sentence': '王先 生您好有什么可', 
-                            'source_sentence': '王先 生您好有什么可以帮您'},]
-            }]
         '''
 
         # subsentence_list, index_sentence = self.deal_dialog(
@@ -322,17 +306,53 @@ class KeyPoint(object):
             })
             index_sentence[i] = item["speech"]
         dialog_result = self.subsenlist_simi(
-            subsentence_list, topic, method="re")  # 对分句结果list获取匹配结果
+            subsentence_list, topic, method="regex")  # 对分句结果list获取匹配结果
         result = self.result_format(
             sentence_result=dialog_result, source_index=index_sentence)
         return result
 
-
+    def test(self, dialogs):
+        '''
+        测试多个对话  # TODO 多种算法合并结果
+        @param dialogs : [{"transcripts": [{},{}], "dialog_id": str, "topic":str}, {"transcripts": [{},{}], "dialog_id": str,"topic":str}]
+        @return 只返回matched到的对话,[{
+            "dialog_id": str,
+            "matched": [
+                            {'keypoint':'',
+                            'matched':[{'sentence':'',  # 切割后的句子
+                                        'compared_source':'',  # 匹配库中的句子
+                                        'source_sentence':'',  # 对话中的原句（未切割）
+                                        'score': float,
+                                        "keywords": str,      # 匹配到的关键词
+                                        "start_time": "08:06:38",
+                                        "end_time": "08:06:43",
+                                        },
+                                        {},,,
+                                ]
+                            },
+                            {},
+                        ],
+            "transcripts": str(dumped)
+            }]
+        '''
+        result = []
+        for dialog in dialogs:
+            dialog_id = dialog["dialog_id"]
+            transcripts = dialog["transcripts"]
+            topic = dialog["topic"]
+            keypoint_matched = self.run_levenshtein(transcripts=transcripts, topic=topic)
+            if keypoint_matched != []:
+                result.append({
+                    "dialog_id": dialog_id,
+                    "transcripts": json.dumps(transcripts, ensure_ascii=False),
+                    "matched": keypoint_matched
+                })
+        return result
 
 if __name__ == '__main__':
 
     key_point = KeyPoint(compare_corpus_path='data/compare_corpus_11.json')
-    dialog = [
+    transcripts = [
         {
             "target": "坐席",
             "speech": "好谢谢您那现在麻烦您把信用卡翻到背面卡片在手上的是吧请您把信用卡翻到背面白色签名条上有七位数字给您一个语音提示请您把七位数字中的后三位输入进来验证一下好吧",
@@ -449,12 +469,22 @@ if __name__ == '__main__':
         }
     ]
     topic = '现金分期'
-    # word2vec,levenshteinStr
-    result_1 = key_point.run_levenshtein(transcripts=dialog, topic=topic)
-    result_2 = key_point.run_word2vec(transcripts=dialog, topic=topic)
-    result_3 = key_point.run_regex(transcripts=dialog, topic=topic)
-    with open('data/result.json','w',encoding='utf8') as f:
-        f.write(json.dumps(result_1,ensure_ascii=False))
-        f.write(json.dumps(result_2,ensure_ascii=False))
-        f.write(json.dumps(result_3,ensure_ascii=False))
+    
+    result = key_point.run_levenshtein(transcripts=transcripts, topic=topic)
+    print("测试单个对话:", result)
+    exit()
+
+    # test dialogs,后台实际调用的function
+    t1 = time.time()
+    dialogs = [{"transcripts": transcripts, "dialog_id": "dfrvfv", "topic":topic}]
+    print("测试多个对话：", key_point.test(dialogs=dialogs), time.time()-t1)
+    
+    # # word2vec,levenshteinStr
+    # result_1 = key_point.run_levenshtein(transcripts=dialog, topic=topic)
+    # result_2 = key_point.run_word2vec(transcripts=dialog, topic=topic)
+    # result_3 = key_point.run_regex(transcripts=dialog, topic=topic)
+    # with open('data/result.json','w',encoding='utf8') as f:
+    #     f.write(json.dumps(result_1,ensure_ascii=False))
+    #     f.write(json.dumps(result_2,ensure_ascii=False))
+    #     f.write(json.dumps(result_3,ensure_ascii=False))
     

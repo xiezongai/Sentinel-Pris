@@ -7,10 +7,11 @@ import jieba
 from scipy.spatial.distance import pdist
 
 
-wordvec_size =300
-zero_pad = [0 for n in range(wordvec_size)]
 model_path= "model/word2vec_include.model"
 model_loaded= Word2Vec.load(model_path)
+wordvec_size = len(model_loaded['账单'])
+zero_pad = [0 for n in range(wordvec_size)]
+
 
 def corpus(path):
     '''
