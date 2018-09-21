@@ -16,8 +16,8 @@ zero_pad = [0 for n in range(wordvec_size)]
 def corpus(path):
     '''
     读取匹配库
-    :param path: ‘./corpus_19.json’
-    :return: {"申请办卡"：["要办卡"]}
+    @param path: './corpus_19.json'
+    @return: {"申请办卡"：["要办卡"]}
     '''
     with open(path, 'r', encoding="utf-8")as f:
         corpus = json.load(f)
@@ -26,8 +26,8 @@ def corpus(path):
 def data(path):
     '''
     读取过滤后的数据
-    :param path: 数据的路径:'./data_final.json'
-    :return: [["想办卡","好的"], []]
+    @param path: 数据的路径:'./data_final.json'
+    @return: [["想办卡","好的"], []]
     '''
     with open(path, 'r')as f:
         data = json.load(f)
@@ -39,10 +39,10 @@ def data(path):
 def sentenceSplit(string, N, step):
     """
     滑动窗口：对输入字符串按照窗口大小N以步长step取出，返回字符串数组
-    :param  string<string>:查一下信用卡额度
-    :param  N<int>：5
-    :param  step<int>：1
-    :return ["查一下信用卡","一下信用卡额","下信用卡额度"]
+    @param  string<string>:查一下信用卡额度
+    @param  N<int>：5
+    @param  step<int>：1
+    @return ["查一下信用卡","一下信用卡额","下信用卡额度"]
     """
     if not string:
         return []
@@ -61,29 +61,37 @@ def sentenceSplit(string, N, step):
 def levenshteinStr(sentence, simlist, threshold):
     """
     单句与匹配句子list做相似度计算，返回相似度分值最高的一个
-    :param sentence:string, 原句
-    :param simlist:list, 匹配句子list
-    :param threshold:float, 阈值
-    :return [score, source_sentence, matched_sentence]"""
-    sim_temp_list = []
+    @param sentence:string, 原句
+    @param simlist:list, 匹配句子list
+    @param threshold:float, 阈值
+    @return {'sentence': "subsentence", # 原子句
+             'score':'',  # 相似度分值，regex方法下置为1
+             'compared_source':'匹配库句子', # 匹配库中的句子，regex方法下置为""
+             'matched_regex':''  # regex匹配到的式子
+            }
+    """
+    sim_temp_dict = {}
     sim_temp = float(threshold)
     for eachsim in simlist:
         score = Levenshtein.ratio(eachsim, sentence)
         if score > sim_temp:
             sim_temp = score
-            sim_temp_list = [sim_temp, sentence, eachsim]
+            sim_temp_dict = {'sentence': sentence, # 原子句
+                             'score':sim_temp,  # 相似度分值
+                             'compared_source':eachsim, # 匹配库中的句子
+                             'matched_regex':''}
         else:
             continue
-    if not sim_temp_list:
+    if not sim_temp_dict:
         return None
     else:
-        return sim_temp_list
+        return sim_temp_dict
 
 def top_keypoint(keypoints):
     '''
     取多个关键点的top1：
-    :param keypoints: list,[{'keypoint':'key1', 'score':0.2, 'compared_source':'sdd'}, {'keypoint':'key2', 'score':0.9, 'compared_source':'top1_compared_sentence'}, {'keypoint':'key3', 'score':0.6, 'compared_source':'top1_compared_sentence1'}]
-    :return top1_keypoint:{'compared_source': 'top1_compared_sentence', 'keypoint': 'key2', 'score': 0.9}
+    @param keypoints: list,[{'keypoint':'key1', 'score':0.2, 'compared_source':'sdd'}, {'keypoint':'key2', 'score':0.9, 'compared_source':'top1_compared_sentence'}, {'keypoint':'key3', 'score':0.6, 'compared_source':'top1_compared_sentence1'}]
+    @return top1_keypoint:{'compared_source': 'top1_compared_sentence', 'keypoint': 'key2', 'score': 0.9}
     '''
     keypoint_list = [item['keypoint'] for item in keypoints]
     score = [item['score'] for item in keypoints]
@@ -98,12 +106,15 @@ def w2v_model_new(sentence, simi_list, threshold):
     
     @param sentence:str
     @param simi_list:  [{"sentence":str, "array":array}]
-    @return sim_temp_list:[score, "sentence", "匹配句"]
+    @return sim_temp_dict:{'sentence':  '', # 原子句
+                           'score':sim_temp,  # 相似度分值
+                           'compared_source':'', # 匹配库中的句子
+                           'matched_regex':'' # 置为空}
     """
     sentence_vec=get_vec(sentence)
    # print(len(sentence_vec[1]))
 
-    sim_temp_list = []
+    sim_temp_dict = {}
     sim_temp = float(threshold)
     #print('simi',simi_list)
     for eachsim in simi_list:
@@ -111,19 +122,22 @@ def w2v_model_new(sentence, simi_list, threshold):
         score = getscore(sentence_vec[1], eachsim['array'])
         if score > sim_temp:
             sim_temp = score
-            sim_temp_list = [sim_temp, get_vec(sentence)[0], eachsim['sentence']]
+            sim_temp_dict = {'sentence':  get_vec(sentence)[0], # 原子句
+                             'score':sim_temp,  # 相似度分值
+                             'compared_source':eachsim['sentence'], # 匹配库中的句子
+                             'matched_regex':''}
         else:
             continue
-    if not sim_temp_list:
+    if not sim_temp_dict:
         return None
     else:
-        return sim_temp_list
+        return sim_temp_dict
 
 def getsimlist_vec(list):
     """
     匹配库向量化
-    :param list: ["", ""]
-    :return: [{"sentence": str, "array": np.array([])}]
+    @param list: ["", ""]
+    @return: [{"sentence": str, "array": np.array([])}]
     """
     result = []
     for eachsentence in list:
@@ -146,9 +160,9 @@ def getsimlist_vec(list):
 def getscore(sentence_vec, sim_vec):
     """
     计算两个向量的余弦相似度
-    :param sentence_vec: np.array([]))
-    :param sim_vec: np.array([]))
-    :return: score
+    @param sentence_vec: np.array([]))
+    @param sim_vec: np.array([]))
+    @return: score
     """
     if list(sentence_vec) == list(zero_pad):
         score = 1
@@ -191,9 +205,12 @@ def get_vec(sentence):
 def regex(sentence, keywords):
     """
     单句与keywords做正则匹配，包含keywords里的任意一个则匹配成功
-    :param sentence:string, 原句
-    :param keywords:list, keywords list
-    :return [score=1, source_sentence,'' ,matched_pattern]
+    @param sentence:string, 原句
+    @param keywords:list, keywords list
+    @return {'sentence': sentence, # 原子句
+             'score':1,  # 相似度分值
+             'compared_source':'',
+             'matched_regex':pattern}
     """
     matched_list = []
     if keywords == []:
@@ -201,13 +218,31 @@ def regex(sentence, keywords):
     else:
         for pattern in keywords:
             if re.search(pattern, sentence):
-                return [1, sentence, '', pattern]
+                return {'sentence': sentence, # 原子句
+                        'score':1,  # 相似度分值
+                        'compared_source':'',
+                        'matched_regex':pattern}
         return None
 
 def combine(matched):
     """
     对一个关键点下匹配到的多个句子进行筛选，来自于同一源句的取分值最高的一个
-    :param matched:list, [{"matched_sentence": "subsentence", "compared_sentence": "匹配库句子", "score":float, "source_sentence":str, 'start_time':start_time, 'end_time':end_time}]
+    @param matched:list,  [{'sentence': '',  # 匹配到的原句中的句子
+                            'score': 0.53,   # 相似度分值
+                            'compared_source': '', # 匹配库中的句子
+                            'matched_regex': '', # 置空
+                            'start_time': '0.00', 
+                            'end_time': '3.83', 
+                            'source_sentence': ''  # 子句源句
+                           },,,,] 
+    @return list,   [{'sentence': '',  # 匹配到的原句中的句子
+                      'score': 0.53,   # 相似度分值
+                      'compared_source': '', # 匹配库中的句子
+                      'matched_regex': '', # 置空
+                      'start_time': '0.00', 
+                      'end_time': '3.83', 
+                      'source_sentence': ''  # 子句源句
+                    },,,,] 
     """
     score = [item['score'] for item in matched]
     score_forindex = copy.deepcopy(score)
