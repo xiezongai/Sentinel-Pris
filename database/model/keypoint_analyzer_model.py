@@ -10,7 +10,7 @@ class KeypointAnalyzerModel(BaseModel):
     matched_sentences = TextField()   # \n分隔
     regex = TextField()   # \n分隔
     target = CharField(max_length=200, null=False, default='all')  # all,坐席,客户
-    mode = CharField(max_length=200, null=False, default='all')  # all,levenshtein,regex
+    mode = CharField(max_length=200, null=False, default='all')  # all,levenshtein,regex,word2vec
     levenshtein_threshold = FloatField(default=0.8) 
     word2vec_threshold = FloatField(default=0.9) 
     created_datetime = DateTimeField(null=False)

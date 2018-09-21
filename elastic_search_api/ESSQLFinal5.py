@@ -8,7 +8,7 @@ from elasticsearch import Elasticsearch
 
 class ESSearch:
     def __init__(self,index, doc_type="doc"):
-        self.es = Elasticsearch()
+        self.es = Elasticsearch(hosts=[{"host": "localhost", "port": 9200}])  # TODO
         self.index = index   # index name
         self.doc_type = doc_type  # 暂时不用
         
@@ -21,7 +21,7 @@ class ESSearch:
         """
         body = {'query':{'match_phrase':{'dialog_id':{'query':dialog_id}}}}
         res = self.es.search(index=self.index, body=body)
-        return res['hits']['hits'][0]['_source']
+        return res['hits']['hits'][0]['_source']   # TODO 异常处理
     
     
     def search_dialog_by_call_id(self, call_id):
@@ -92,7 +92,7 @@ class ESSearch:
             return_list.append(return_dict)
         return return_list     
         
-    def search_dialog_by_time_range(self,timestart,timeend):
+    def search_dialog_by_time_range(self,start_datetime,end_datetime):
         """
         Description: 返回符合时间要求的索引内容
         Params: timestart,timeend:<string>  例:'2018-09-15 01:01:01'
@@ -117,7 +117,7 @@ class ESSearch:
         Description:返回模糊匹配到的对话以及高亮部分
         Params:sentence:<string> 
         Return:
-        [{'transcripts':<string>,'highlight':<string>},{}...]
+        [{'transcripts':<string>,'highlight':<string>},{}...]  # TODO 注释修改
         """
         body = {
         "query": {
@@ -231,6 +231,7 @@ if __name__ == '__main__':
     print('testing search_dialog_by_text_4','\n',f,'\n')
     print('testing search_dialog_by_time_range','\n',g,'\n')
     
+
     
     
     

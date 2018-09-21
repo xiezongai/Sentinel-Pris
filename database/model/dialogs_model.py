@@ -12,9 +12,11 @@ class Dialogs(BaseModel):
     begin_time = DateTimeField()  # dialog_start_time
     end_time= DateTimeField()
     transcripts = TextField(default="")
-    emotion=CharField(max_length=30, column_name='emotion', default='')
-    silence=FloatField(default=0)
+    emotion=CharField(max_length=30, column_name='emotion', default='')  # 中性，积极，消极
+    silence_max = FloatField(default=0)  # 方便做检索
+    silence_total = FloatField(default=0)  # 方便做检索
     interruption=CharField(max_length=200, column_name='interruption', default='')
+    interruption_status = BooleanField(default=False) # 方便做检索
     status=IntegerField(default=0)
     session_id= CharField(max_length=128, column_name='session_id')
     is_manual_rated = BooleanField(default=False)
@@ -22,5 +24,6 @@ class Dialogs(BaseModel):
     manual_rating=TextField(default="")
     machine_score = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.datetime.now, null=False)
+
     class Meta:
         table_name = 'dialogs'

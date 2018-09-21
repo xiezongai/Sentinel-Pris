@@ -1,3 +1,6 @@
+"""
+TODO : dialogs 表修改过，很多方法都要改
+"""
 import logging
 import traceback
 import datetime
@@ -123,8 +126,10 @@ class DialogsDAO(object):
                     "end_time": dialog.end_time,  # datetime
                     "transcripts": [] if dialog.transcripts=='' else json.loads(dialog.transcripts, encoding='utf-8'),
                     "emotion": dialog.emotion,
-                    "silence":dialog.silence,
+                    "silence_max":dialog.silence_max,
+                    "silence_total":dialog.silence_total,
                     "interruption": dialog.interruption,
+                    "interruption_status": dialog.interruption_status,
                     "status": dialog.status,
                     "session_id" : dialog.session_id
                 })

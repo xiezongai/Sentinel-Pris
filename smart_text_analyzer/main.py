@@ -23,7 +23,6 @@ if __name__ == '__main__':
         name = analyzer["name"]
         analyzer = SmartTextAnalyzerDAO.view_analyzer_by_id(analyzer_id=id)
         # print("%s regex:" % name, analyzer["regex"])
-        # exit()
         text_analyzer[name] = SmartTextAnalyzer(id=id, name=name, description=analyzer["description"], 
                                                 target=analyzer["target"],matched_sentences=analyzer["matched_sentences"], 
                                                 threshold=analyzer["threshold"], regex=analyzer["regex"], mode=analyzer["mode"], 
@@ -47,5 +46,3 @@ if __name__ == '__main__':
     # 测试从DB中读对话，然后用text_analyzer检测
     for name in text_analyzer:
         print("%s--多个对话测试：" % name, text_analyzer[name].test(dialogs=dialogs), '\n')
-
-        exit()
