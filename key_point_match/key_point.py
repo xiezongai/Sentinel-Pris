@@ -25,7 +25,7 @@ class KeyPoint(object):
         :param method: string, 'levenshtein' or 'word2vec' or 're'
         :param sentence: string
         :return result: {'sentence': "subsentence",'keypoint':'', 'score':'', 'compared_source':'匹配库句子'}
-                当使用regular方法时,返回结果为{'sentence': sentence,'keypoint':'', 'score':1, 'compared_source':'', 'matched_pattern':''}
+                当使用regex方法时,返回结果为{'sentence': sentence,'keypoint':'', 'score':1, 'compared_source':'', 'matched_pattern':''}
         '''
         result = []
         multi_keypoint = []
@@ -47,7 +47,7 @@ class KeyPoint(object):
                 score_result = w2v_model_new(sentence, self.compare_corpus_vector[topic][key]["compared_corpus"], threshold)
             elif method == 're':
                 re_patterns = sim_corpus[key]['patterns']
-                score_result = regular(sentence, re_patterns)
+                score_result = regex(sentence, re_patterns)
                 if score_result != None:
                     multi_keypoint = []
                     multi_keypoint.append({'keypoint':key, 'score':1, 'compared_source':'', 'matched_pattern':score_result[3]})
@@ -209,6 +209,10 @@ class KeyPoint(object):
             subsentence_list, topic, method="levenshtein")  # 对分句结果list获取匹配结果
         result = self.result_format(
             sentence_result=dialog_result, source_index=index_sentence)
+        if result != []: # 同一源句合并
+            for index in range(len(result)):
+                matched = result[index]['matched']
+                result[index]['matched'] = combine(matched)
         return result
 
     def run_word2vec(self, transcripts, topic):
@@ -267,7 +271,7 @@ class KeyPoint(object):
             sentence_result=dialog_result, source_index=index_sentence)
         return result
 
-    def run_regular(self, transcripts, topic):
+    def run_regex(self, transcripts, topic):
         '''
         对某个业务分类下的单个对话，获取关键点及对应的句子
         :param  transcripts: list,每一项为一个句子
@@ -331,7 +335,7 @@ if __name__ == '__main__':
     dialog = [
         {
             "target": "坐席",
-            "speech": "王先 生您好有什么可以帮您",
+            "speech": "好谢谢您那现在麻烦您把信用卡翻到背面卡片在手上的是吧请您把信用卡翻到背面白色签名条上有七位数字给您一个语音提示请您把七位数字中的后三位输入进来验证一下好吧",
             "start_time": "0.00",
             "end_time": "3.83"
         },
@@ -446,5 +450,11 @@ if __name__ == '__main__':
     ]
     topic = '现金分期'
     # word2vec,levenshteinStr
-    result = key_point.run_levenshtein(transcripts=dialog, topic=topic)
-    print(result)
+    result_1 = key_point.run_levenshtein(transcripts=dialog, topic=topic)
+    result_2 = key_point.run_word2vec(transcripts=dialog, topic=topic)
+    result_3 = key_point.run_regex(transcripts=dialog, topic=topic)
+    with open('data/result.json','w',encoding='utf8') as f:
+        f.write(json.dumps(result_1,ensure_ascii=False))
+        f.write(json.dumps(result_2,ensure_ascii=False))
+        f.write(json.dumps(result_3,ensure_ascii=False))
+    

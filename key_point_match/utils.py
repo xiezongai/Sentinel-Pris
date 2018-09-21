@@ -187,7 +187,7 @@ def get_vec(sentence):
         x[1] = sum / count
         return x
 
-def regular(sentence, keywords):
+def regex(sentence, keywords):
     """
     单句与keywords做正则匹配，包含keywords里的任意一个则匹配成功
     :param sentence:string, 原句
@@ -202,3 +202,22 @@ def regular(sentence, keywords):
             if re.search(pattern, sentence):
                 return [1, sentence, '', pattern]
         return None
+
+def combine(matched):
+    """
+    对一个关键点下匹配到的多个句子进行筛选，来自于同一源句的取分值最高的一个
+    :param matched:list, [{"matched_sentence": "subsentence", "compared_sentence": "匹配库句子", "score":float, "source_sentence":str, 'start_time':start_time, 'end_time':end_time}]
+    """
+    score = [item['score'] for item in matched]
+    score_forindex = copy.deepcopy(score)
+    score.sort()
+    source_sentence_list = []
+    result = []
+    for i in range(len(score)):
+        index = score_forindex.index(score[len(score)-i-1])
+        if matched[index]['source_sentence'] not in source_sentence_list:
+            result.append(matched[index])
+            source_sentence_list.append(matched[index]['source_sentence'])
+            matched.remove(matched[index])
+            score_forindex.remove(score[len(score)-i-1])    
+    return result
