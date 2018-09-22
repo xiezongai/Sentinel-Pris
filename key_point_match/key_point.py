@@ -43,7 +43,8 @@ class KeyPoint(object):
                 # score_result: 单关键点匹配结果
             elif method == 'word2vec':
                 threshold = sim_corpus[key]['threshold']['word2vec']
-                score_result = w2v_model_new(sentence, self.compare_corpus_vector[topic][key]["compared_corpus"], threshold)
+                # score_result = w2v_model_new(sentence, self.compare_corpus_vector[topic][key]["compared_corpus"], threshold)
+                score_result = w2v_model(sentence, self.compare_corpus[topic][key]["compared_corpus"], threshold)
             elif method == 'regex':
                 re_patterns = sim_corpus[key]['patterns']
                 score_result = regex(sentence, re_patterns)
@@ -86,8 +87,8 @@ class KeyPoint(object):
                 if not string:
                     sentence = None
                 if N > len(string):
-                    sentence = string + '_' + str(sen_num)
-                    subsentence.append(sentence)
+                    subsen = {'sentence': string, 'sen_num': each_pare["sen_num"], 'start_time': each_pare["start_time"],'end_time': each_pare["end_time"]}
+                    subsentence.append(subsen)
                 else:
                     res = []
                     point = N
@@ -354,7 +355,7 @@ class KeyPoint(object):
 
 if __name__ == '__main__':
 
-    key_point = KeyPoint(compare_corpus_path='data/compare_corpus_11.json')
+    key_point = KeyPoint(compare_corpus_path='data/compare_corpus_20.json')
     transcripts = [
         {
             "target": "坐席",
@@ -370,13 +371,13 @@ if __name__ == '__main__':
         },
         {
             "target": "坐席",
-            "speech": "嗯完了又又什么又跑了一万一万多块钱过去",
+            "speech": "请问您资金用途是？",
             "start_time": "17.86",
             "end_time": "23.92"
         },
         {
             "target": "客户",
-            "speech": "不是我的它它那个app怎么这个月还要还一万多",
+            "speech": "请问你的储蓄卡是一类账户么？本期账单还款还需要",
             "start_time": "23.92",
             "end_time": "30.94"
         },
