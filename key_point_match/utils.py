@@ -133,69 +133,6 @@ def w2v_model_new(sentence, simi_list, threshold):
     else:
         return sim_temp_dict
 
-def w2v_model(sentence,simi_list,threshold):
-    '''
-
-    :param sentence: 输入单句
-    :param simi_list: 匹配库
-    :param threshold: 输出相似度最大的句子的阈值
-    :return: [score, source_sentence, matched_sentence]
-    '''
-    stopwordlist = stopwordslist('data/ChineseStopWords.txt')
-    words = list(jieba.cut(sentence.strip()))
-    words_new=[]
-    for each_slice in words:
-        try:
-             vocab = model_loaded[each_slice]
-             words_new.append(each_slice)
-        except KeyError:
-            pass
-            # print("not in vocabulary")
-    words_list=[]
-    for wor in words_new:
-    	if wor not in stopwordlist:
-    		words_list.append(wor)
-    	else:
-    		pass
-
-    sim_temp_dict = {}
-    sim_temp = float(threshold)
-   # print(simi_list)
-    for candidate in simi_list:
-        candidate_new=[]
-        score = 0
-        #print('ca',candidate)
-        if candidate == '':
-            pass
-        else:
-            candidate_sentence = candidate
-            candidate = list(jieba.cut(candidate))
-            candidate_list=[]
-            for wor in candidate:
-            	if wor not in stopwordlist:
-            		candidate_list.append(wor)
-            	else:
-            		pass
-            if candidate_list==[]:
-            	pass
-            elif words_list==[]:
-            	pass
-            else:
-
-	            score = model_loaded.n_similarity(words_new, candidate_list)
-	            if score > sim_temp:
-	                sim_temp = score
-	                sim_temp_dict = {'sentence':  sentence, # 原子句
-                             'score':sim_temp,  # 相似度分值
-                             'compared_source':candidate_sentence, # 匹配库中的句子
-                             'matched_regex':''}
-	            else:
-
-	                continue
-    if not sim_temp_dict:
-        return None
-    else:
-        return sim_temp_dict
 
 
 def getsimlist_vec(list):
@@ -322,3 +259,7 @@ def combine(matched):
             matched.remove(matched[index])
             score_forindex.remove(score[len(score)-i-1])    
     return result
+    
+
+if __name__ == '__main__':
+    print(w2v_model(sentence="信用卡", simi_list=["信用卡", "你好", "耄耋"], threshold=0.1))
