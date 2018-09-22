@@ -136,10 +136,14 @@ def w2v_model_new(sentence, simi_list, threshold):
 def w2v_model(sentence,simi_list,threshold):
     '''
 
-    :param sentence: 输入单句
-    :param simi_list: 匹配库
-    :param threshold: 输出相似度最大的句子的阈值
-    :return: [score, source_sentence, matched_sentence]
+    单句与匹配句子list做相似度计算，返回相似度分值最高的一个
+    @param sentence:string, 原句
+    @param simlist:list, 匹配句子list
+    @param threshold:float, 阈值
+    @return sim_temp_dict:{'sentence':  '', # 原子句
+                           'score':sim_temp,  # 相似度分值
+                           'compared_source':'', # 匹配库中的句子
+                           'matched_regex':'' # 置为空}
     '''
     stopwordlist = stopwordslist('data/ChineseStopWords.txt')
     words = list(jieba.cut(sentence.strip()))
@@ -160,11 +164,9 @@ def w2v_model(sentence,simi_list,threshold):
 
     sim_temp_dict = {}
     sim_temp = float(threshold)
-   # print(simi_list)
     for candidate in simi_list:
         candidate_new=[]
         score = 0
-        #print('ca',candidate)
         if candidate == '':
             pass
         else:
@@ -176,20 +178,28 @@ def w2v_model(sentence,simi_list,threshold):
             		candidate_list.append(wor)
             	else:
             		pass
-            if candidate_list==[]:
+            candidate_new=[]
+            for each_slice in candidate_list:
+                try:
+                    vocab = model_loaded[each_slice]
+                    candidate_new.append(each_slice)
+                    print(candidate_new)
+                except KeyError:
+                    pass
+            if candidate_new==[]:
             	pass
             elif words_list==[]:
             	pass
             else:
-
-	            score = model_loaded.n_similarity(words_new, candidate_list)
-	            if score > sim_temp:
+                print('input',candidate_new)
+                score = model_loaded.n_similarity(words_new,candidate_new)
+                if score > sim_temp:
 	                sim_temp = score
 	                sim_temp_dict = {'sentence':  sentence, # 原子句
                              'score':sim_temp,  # 相似度分值
                              'compared_source':candidate_sentence, # 匹配库中的句子
                              'matched_regex':''}
-	            else:
+                else:
 
 	                continue
     if not sim_temp_dict:
