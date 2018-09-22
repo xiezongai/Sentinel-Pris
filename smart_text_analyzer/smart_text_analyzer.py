@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import json
+from utils import *
 
 MAX_RESULT = 10
 
@@ -109,6 +110,52 @@ class SmartTextAnalyzer:
             if len(matched) == MAX_RESULT:  # TODO 仅供测试，只测试MAX_RESULT个对话
                 return matched
         return matched
+    
+    def run_levenshtein(self, transcripts, dialog_id):
+        """
+        @Description: 针对于单个text analyzer做测试,只测试一个对话
+        @param  transcripts: [{"speech": "坐席 or 客户", "target": <string>, "start_time": <string>, "end_time": <string>}]
+        @param  dialog_id:str
+        @return {
+                "id": "",
+                "target": "", # 说话者身份
+                "matched": [             # 如果没有匹配到任何句子，则返回的matched字段为[]
+                    {
+                        "score": 0.5454545454545454,  # 匹配的分数
+                        "source": "没有了",            # 对话句子（切割之后）
+                        "matched": "",                # 匹配句
+                        "start_time": "08:06:38",
+                        "end_time": "08:06:43",
+                        "origin": "没有了没有了",       # 对话句子（未切割）
+                        "regex": ""                    # regex pattern为空
+                    }
+                ]
+            }
+        """
+        result = {"id": dialog_id, "target": self.target, "matched": []}
+        for sentence in transcripts:
+            if self.target == "all":
+                match_result = levenshteinList(sentence['speech'], self.matched_sentences, self.threshold)
+                if match_result:
+                    result["matched"].append(
+                        {"score": match_result[0], "source": match_result[1], "matched": match_result[2],
+                         "start_time": sentence["start_time"], "end_time": sentence["end_time"],
+                         "origin": sentence["speech"], "regex": ""})
+            elif self.target == "坐席" and sentence["target"] == "坐席":
+                match_result = levenshteinList(sentence['speech'], self.matched_sentences, self.threshold)
+                if match_result:
+                    result["matched"].append(
+                        {"score": match_result[0], "source": match_result[1], "matched": match_result[2],
+                         "start_time": sentence["start_time"], "end_time": sentence["end_time"],
+                         "origin": sentence["speech"], "regex": ""})
+            elif self.target == "客户" and sentence["target"] == "客户":
+                match_result = levenshteinList(sentence['speech'], self.matched_sentences, self.threshold)
+                if match_result:
+                    result["matched"].append(
+                        {"score": match_result[0], "source": match_result[1], "matched": match_result[2],
+                         "start_time": sentence["start_time"], "end_time": sentence["end_time"],
+                         "origin": sentence["speech"], "regex": ""})
+        return result
 
 
 if __name__ == '__main__':
