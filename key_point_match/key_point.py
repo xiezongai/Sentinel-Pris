@@ -1,8 +1,5 @@
 '''
 created by xuhong 2018/9/18
-更改:   1.匹配库增添每个关键点的阈值
-        2.完善了多种算法的选择，通过传method（string）参数选择算法，method可选'levenshtein' or 'word2vec'
-        3.完善了function的注释
 '''
 import json
 import copy
@@ -21,47 +18,45 @@ class KeyPoint(object):
 
     def get_similarity(self, topic, method, sentence):
         '''
-        单句与匹配库匹配,返回高于每项设定的阈值的关键点的最高相似度,有多个点的取最高的
+        单句与匹配库匹配,返回高于每项设定的阈值的关键点的最高相似度,有多个关键点的取最高的
         :param topic: string, '现金分期'
-        :param method: string, 'levenshtein' or 'word2vec'
+        :param method: string, 'levenshtein' or 'word2vec' or 'regex'
         :param sentence: string
-        :return result: {'sentence': "subsentence",'keypoint':'', 'score':'', 'compared_source':'匹配库句子'}
+        :return result: {'sentence': "subsentence", # 原子句
+                         'keypoint':'', 
+                         'score':'',  # 相似度分值，regex方法下置为1
+                         'compared_source':'匹配库句子', # 匹配库中的句子，regex方法下置为""
+                         'matched_regex':''  # regex匹配到的式子
+                         }
         '''
         result = []
-        multi_keypoint = []
+        keypoints_result = []
         try:
             sim_corpus = self.compare_corpus[topic]
         except KeyError:
             print('******暂不支持该业务分类下的关键点提取！******')
             exit()
         for key in sim_corpus.keys():
-            keypoint_dic = {'keypoint': key, 'score': 0, 'compared_source': ''}
-            top1_score = 0
-            top1_key = ''
-            top1_source = ''
-            sim_list = sim_corpus[key]['compared_corpus']  # [str]
             if method == 'levenshtein':
                 threshold = sim_corpus[key]['threshold']['levenshtein']
                 score_result = levenshteinStr(sentence, self.compare_corpus[topic][key]["compared_corpus"], threshold)
+                # score_result: 单关键点匹配结果
             elif method == 'word2vec':
                 threshold = sim_corpus[key]['threshold']['word2vec']
-                score_result = w2v_model_new(sentence, self.compare_corpus_vector[topic][key]["compared_corpus"], threshold)
+                # score_result = w2v_model_new(sentence, self.compare_corpus_vector[topic][key]["compared_corpus"], threshold)
+                score_result = w2v_model(sentence, self.compare_corpus[topic][key]["compared_corpus"], threshold)
+            elif method == 'regex':
+                re_patterns = sim_corpus[key]['patterns']
+                score_result = regex(sentence, re_patterns)
+            else:
+                print('******暂不支持该方法！*******')
             if score_result != None:
-                score = score_result[0]
-                if score > top1_score:
-                    top1_score = score
-                    top1_key = key
-                    top1_compared_sentence = score_result[2]
-            if top1_score != 0:
-                top1_score = float('%.2f' % top1_score)
-                keypoint_dic = {'keypoint': key, 'score': top1_score,
-                                'compared_source': top1_compared_sentence}
-                multi_keypoint.append(keypoint_dic)
-        if len(multi_keypoint) > 1: # 子句匹配到多个关键点时，取相似度分值最高的
-            result = top_keypoint(multi_keypoint)
-            result['sentence'] = sentence
-        elif len(multi_keypoint) == 1:
-            result = multi_keypoint[0]
+                score_result['keypoint'] = key
+                score_result['score'] = float('%.2f' % score_result['score']) # 相似度分值取小数点后两位
+                keypoints_result.append(score_result)
+        # print(keypoints_result)
+        if len(keypoints_result) >= 1: # 子句匹配到多个关键点时，取相似度分值最高的
+            result = top_keypoint(keypoints_result)
             result['sentence'] = sentence
         else:
             result = None
@@ -92,8 +87,8 @@ class KeyPoint(object):
                 if not string:
                     sentence = None
                 if N > len(string):
-                    sentence = string + '_' + str(sen_num)
-                    subsentence.append(sentence)
+                    subsen = {'sentence': string, 'sen_num': each_pare["sen_num"], 'start_time': each_pare["start_time"],'end_time': each_pare["end_time"]}
+                    subsentence.append(subsen)
                 else:
                     res = []
                     point = N
@@ -108,21 +103,28 @@ class KeyPoint(object):
     def subsenlist_simi(self, subsentence_list, topic, method='levenshtein'):
         '''
         对子句list进行相似度匹配，返回每个子句对应的关键点以及该关键点的相似度分值
-        来自同一个源句的多个子句属于同一个关键点，取分值最高的那个
-        :param subsentence_list: list, [{'sentence':subsentence1,'sen_num': num, 'start_time':start_time 'end_time':end_time},...]
+        :param subsentence_list: list, [{'sentence':subsentence1,
+                                         'sen_num': num, 
+                                         'start_time':start_time,
+                                         'end_time':end_time},...]
         :param topic: string, '现金分期'
-        :param method: string, 用到的算法，默认为levenshtein 可选'word2vec'
-        :return result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。', 'start_time':start_time, 'end_time':end_time}, ]
+        :param method: string, 用到的算法，默认为levenshtein 可选'word2vec' or 're'
+        :return result: list, [{'sentence': '', 
+                                'sen_num': 0, 
+                                'keypoint': '', 
+                                'score': 0.34, 
+                                'compared_source': '有什么疑问您可以随时致电我们客服热线。',
+                                'matched_regex': '', 
+                                'start_time':start_time, 
+                                'end_time':end_time}, {}]
         '''
         result = []
         for subsentence in subsentence_list:
             sentence = subsentence['sentence']
             subsentence_result = self.get_similarity(
                 topic, method, sentence)
-            # score = subsentence_result['score']
-            # 
             if subsentence_result != None:
-                subsentence_result['sen_num'] = subsentence['sen_num']
+                subsentence_result['sen_num'] = subsentence['sen_num']   # 加入源句，时间等信息
                 subsentence_result['start_time'] = subsentence['start_time']
                 subsentence_result['end_time'] = subsentence['end_time']
                 result.append(subsentence_result)
@@ -134,18 +136,33 @@ class KeyPoint(object):
     def result_format(self, sentence_result, source_index=None):
         '''
         获取最终结果格式
-        :param sentence_result: list, [{'sentence': '', 'sen_num': 0, 'keypoint': '', 'score': 0.34, 'compared_source': '有什么疑问您可以随时致电我们客服热线。', 'start_time':start_time, 'end_time':end_time}, ]
-        :source_index: dict, 句子index，用于获取子句对应的原句
-        :return result: list, [{'keypoint':'关键点1','matched':[{"matched_sentence": "subsentence", "compared_sentence": "匹配库句子", "score":float, "source_sentence":str, 'start_time':start_time, 'end_time':end_time}]}]
-        '''
+        :param sentence_result: list, 每一项是单句话返回的结果
+                                  [{'sentence': '', 
+                                    'sen_num': 0, 
+                                    'keypoint': '', 
+                                    'score': 0.34, 
+                                    'compared_source': '有什么疑问您可以随时致电我们客服热线。',
+                                    'matched_regex': '', 
+                                    'start_time':start_time, 
+                                    'end_time':end_time}, {}]
+        :param source_index: dict, 句子index，用于获取子句对应的原句
+        :return result: list, [{'keypoint': '11.确认卡片是否在手', 
+                                'matched': [{'sentence': '',  # 原句或子句
+                                             'score': 0.53,   # 相似度分值
+                                             'compared_source': '', # 匹配库中的句子
+                                             'matched_regex': '', # 匹配的正则表达式
+                                             'start_time': '0.00', 
+                                             'end_time': '3.83', 
+                                             'source_sentence': ''  # 子句源句
+                                            }]
+                                },,,] '''
         result = []
         keypoint_list = []
         if sentence_result == None:
             result = []
             return result
         for subsentence in sentence_result:
-            keypoint = subsentence['keypoint']
-            sentence_num = subsentence['sen_num']
+            keypoint,sentence_num = subsentence['keypoint'],subsentence['sen_num']
             source_sentence = source_index[sentence_num]
             subsentence.pop('keypoint')
             subsentence.pop('sen_num')
@@ -174,28 +191,16 @@ class KeyPoint(object):
                             ]
         :param  topic:  string，业务分类，示例：'现金分期'
         :return result: list, 每一项为这段话匹配到的关键点之一，
-                        格式：[
-                                {'keypoint':'',
-                                'matched':[{'sentence':'',  # 切割后的句子
-                                            'compared_source':'',  # 匹配库中的句子
-                                            'source_sentence':'',  # 对话中的原句（未切割）
-                                            'score': float,
-                                            "start_time": "08:06:38",
-                                            "end_time": "08:06:43",
-                                            },
-                                            {},,,
-                                        ]
-                                },
-                                {},
-                            ]
-                            keypoint：关键点名称，matched：关键点匹配到的句子，matched中每一项为匹配到的一个子句，包含的子句信息包括：sentence:匹配到的子句，source_sentence：子句所在的对话中的原句，compared_source：匹配库中的原句，score:相似度分值
-            示例：
-            [{'keypoint': '14.解释关键信息', 
-              'matched': [ {'score': 0.76, 
-                            'compared_source': '有什么疑问您可以随时致电我们客服热线。', 
-                            'sentence': '王先 生您好有什么可', 
-                            'source_sentence': '王先 生您好有什么可以帮您'},]
-            }]
+                        格式： [{'keypoint': '11.确认卡片是否在手', 
+                                'matched': [{'sentence': '',  # 匹配到的原句中的句子
+                                             'score': 0.53,   # 相似度分值
+                                             'compared_source': '', # 匹配库中的句子
+                                             'matched_regex': '', # 置空
+                                             'start_time': '0.00', 
+                                             'end_time': '3.83', 
+                                             'source_sentence': ''  # 子句源句
+                                            }]
+                                },,,] 
         '''
         subsentence_list, index_sentence = self.deal_dialog(
             transcripts, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
@@ -203,6 +208,10 @@ class KeyPoint(object):
             subsentence_list, topic, method="levenshtein")  # 对分句结果list获取匹配结果
         result = self.result_format(
             sentence_result=dialog_result, source_index=index_sentence)
+        if result != []: # 同一源句合并
+            for index in range(len(result)):
+                matched = result[index]['matched']
+                result[index]['matched'] = combine(matched)
         return result
 
     def run_word2vec(self, transcripts, topic):
@@ -224,23 +233,17 @@ class KeyPoint(object):
                                 'matched':[{'sentence':'',  # 切割后的句子
                                             'compared_source':'',  # 匹配库中的句子
                                             'source_sentence':'',  # 对话中的原句（未切割）
+                                            'matched_regex': '',
                                             'score': float,
                                             "start_time": "08:06:38",
                                             "end_time": "08:06:43",
+                                            "regex": str
                                             },
                                             {},,,
-                                        ]
+                                          ]
                                 },
                                 {},
                             ]
-                            keypoint：关键点名称，matched：关键点匹配到的句子，matched中每一项为匹配到的一个子句，包含的子句信息包括：sentence:匹配到的子句，source_sentence：子句所在的对话中的原句，compared_source：匹配库中的原句，score:相似度分值
-            示例：
-            [{'keypoint': '14.解释关键信息', 
-              'matched': [ {'score': 0.76, 
-                            'compared_source': '有什么疑问您可以随时致电我们客服热线。', 
-                            'sentence': '王先 生您好有什么可', 
-                            'source_sentence': '王先 生您好有什么可以帮您'},]
-            }]
         '''
         # subsentence_list, index_sentence = self.deal_dialog(
         #     dialog, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
@@ -257,6 +260,57 @@ class KeyPoint(object):
             index_sentence[i] = item["speech"]
         dialog_result = self.subsenlist_simi(
             subsentence_list, topic, method="word2vec")  # 对分句结果list获取匹配结果
+        result = self.result_format(
+            sentence_result=dialog_result, source_index=index_sentence)
+        return result
+
+    def run_regex(self, transcripts, topic):
+        '''
+        对某个业务分类下的单个对话，获取关键点及对应的句子
+        :param  transcripts: list,每一项为一个句子
+                        示例：[
+                                {
+                                    "target": "坐席",
+                                    "speech": "王先 生您好有什么可以帮您",
+                                    "start_time": "0.00",
+                                    "end_time": "3.83"
+                                },,,,
+                            ]
+        :param  topic:  string，业务分类，示例：'现金分期'
+        :return result: list, 每一项为这段话匹配到的关键点之一，
+                        格式：[
+                                {'keypoint':'',
+                                'matched':[{'sentence':'',  # 切割后的句子
+                                            'compared_source':'',  # 空
+                                            'source_sentence':'',  # 对话中的原句（未切割）
+                                            'matched_regex': "语音提示",
+                                            'score': float,
+                                            "start_time": "08:06:38",
+                                            "end_time": "08:06:43",
+                                            "regex": str
+                                            },
+                                            {},,,
+                                        ]
+                                },
+                                {},
+                            ]
+        '''
+
+        # subsentence_list, index_sentence = self.deal_dialog(
+        #     dialog, topic, 10, 3)  # 分句 滑窗大小N=10，滑窗步长step=3
+        # [{'sentence':subsentence1,'sen_num': num, 'start_time': str, "end_time": str}]
+        subsentence_list = []
+        index_sentence = {}  # {num: "source sentence"}
+        for i, item in enumerate(transcripts):
+            subsentence_list.append({
+                "sentence": item["speech"],
+                'sen_num': i,
+                "start_time": item['start_time'],
+                "end_time": item['end_time']
+            })
+            index_sentence[i] = item["speech"]
+        dialog_result = self.subsenlist_simi(
+            subsentence_list, topic, method="regex")  # 对分句结果list获取匹配结果
         result = self.result_format(
             sentence_result=dialog_result, source_index=index_sentence)
         return result
@@ -299,14 +353,13 @@ class KeyPoint(object):
                 })
         return result
 
-
 if __name__ == '__main__':
 
-    key_point = KeyPoint(compare_corpus_path='data/compare_corpus_11.json')
+    key_point = KeyPoint(compare_corpus_path='data/compare_corpus_20.json')
     transcripts = [
         {
             "target": "坐席",
-            "speech": "王先 生您好有什么可以帮您",
+            "speech": "好谢谢您那现在麻烦您把信用卡翻到背面卡片在手上的是吧请您把信用卡翻到背面白色签名条上有七位数字给您一个语音提示请您把七位数字中的后三位输入进来验证一下好吧",
             "start_time": "0.00",
             "end_time": "3.83"
         },
@@ -318,13 +371,13 @@ if __name__ == '__main__':
         },
         {
             "target": "坐席",
-            "speech": "嗯完了又又什么又跑了一万一万多块钱过去",
+            "speech": "请问您资金用途是？",
             "start_time": "17.86",
             "end_time": "23.92"
         },
         {
             "target": "客户",
-            "speech": "不是我的它它那个app怎么这个月还要还一万多",
+            "speech": "请问你的储蓄卡是一类账户么？本期账单还款还需要",
             "start_time": "23.92",
             "end_time": "30.94"
         },
@@ -354,7 +407,7 @@ if __name__ == '__main__':
         },
         {
             "target": "坐席",
-            "speech": "别人存都没有问题您稍等我帮您看一下",
+            "speech": "好的那这边和验证通过了那您这张中信信用卡的最后一笔交易是在是在什么时候或者是多少金额您要提供一下",
             "start_time": "59.01",
             "end_time": "64.44"
         },
@@ -401,12 +454,6 @@ if __name__ == '__main__':
             "end_time": "154.07"
         },
         {
-            "target": "坐席",
-            "speech": "您不用担心嗯您看您可用额度现在的话已经有三万八千一百六十六块七毛三了已经还清了您放心的",
-            "start_time": "154.07",
-            "end_time": "167.79"
-        },
-        {
             "target": "客户",
             "speech": "噢那你们的系统怎么都没了消费下班了呢",
             "start_time": "167.79",
@@ -420,11 +467,22 @@ if __name__ == '__main__':
         }
     ]
     topic = '现金分期'
-    
     result = key_point.run_word2vec(transcripts=transcripts, topic=topic)
     print("测试单个对话:", result)
+    exit()
 
     # test dialogs,后台实际调用的function
     t1 = time.time()
     dialogs = [{"transcripts": transcripts, "dialog_id": "dfrvfv", "topic":topic}]
     print("测试多个对话：", key_point.test(dialogs=dialogs), time.time()-t1)
+    
+    # # word2vec,levenshteinStr
+    # result_1 = key_point.run_levenshtein(transcripts=dialog, topic=topic)
+    # result_2 = key_point.run_word2vec(transcripts=dialog, topic=topic)
+    # result_3 = key_point.run_regex(transcripts=dialog, topic=topic)
+    # with open('data/result.json','w',encoding='utf8') as f:
+    #     f.write(json.dumps(result_1,ensure_ascii=False))
+    #     f.write(json.dumps(result_2,ensure_ascii=False))
+    #     f.write(json.dumps(result_3,ensure_ascii=False))
+    
+    
