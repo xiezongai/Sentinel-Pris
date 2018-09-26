@@ -25,7 +25,7 @@ class SmartTextAnalyzer:
         self.name = name
         self.description = description
         self.target = target  # all,坐席,客户
-        self.matched_sentences = matched_sentences  # [str,str]
+        self.matched_sentences = [matched_sentences[i].replace('？','').replace('?','').replace('？','').replace('?','').replace('…','').replace('.','').replace('，','').replace('！','').replace('。','').replace('：','').replace('“','').replace('”','').replace('"','').replace(',','').replace('（','').replace('）','').replace('、','').replace('/','').replace(' ','') for i in range(len(matched_sentences))]  # [str,str]
         self.threshold = threshold
         self.regex = regex   # [str,str]
         self.mode = mode
@@ -134,6 +134,7 @@ class SmartTextAnalyzer:
         """
         result = {"id": dialog_id, "target": self.target, "matched": []}
         for sentence in transcripts:
+            sentence['speech'] = sentence['speech'].replace('？','').replace('?','').replace('？','').replace('?','').replace('…','').replace('.','').replace('，','').replace('！','').replace('。','').replace('：','').replace('“','').replace('”','').replace('"','').replace(',','').replace('（','').replace('）','').replace('、','').replace('/','').replace(' ','')
             if self.target == "all":
                 match_result = levenshteinList(sentence['speech'], self.matched_sentences, self.threshold)
                 if match_result:
