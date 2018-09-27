@@ -29,6 +29,7 @@
 配置成功后查看java -version，应显示配置完成
 
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/2.jpg)
+
 切换到用户目录中，新建java 文件 vim Helloworld.java
 
 然后敲入如下代码进行测试：
@@ -42,6 +43,7 @@
 	}
 ```
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/3.jpg)
+
 javac 编译文件 javac Helloworld.java 生成HelloWorld.class文件,命令为：
 ```
 	javac Helloworld.java
@@ -65,9 +67,11 @@ javac 编译文件 javac Helloworld.java 生成HelloWorld.class文件,命令为�
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/7.jpg)
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/8.jpg)
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/9.jpg)	
+
 解压以后切换到elasticsearch对应的文件目录下 ./bin/elasticsearch启动搜索引擎
 
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/10.jpg)
+
 查看节点状态:
 	```
 	curl localhost:9200/_cat/health?v
@@ -81,12 +85,14 @@ javac 编译文件 javac Helloworld.java 生成HelloWorld.class文件,命令为�
 	（示例）sudo chown caralette /tmp/mozilla_caralette0/elasticsearch-6.4.1() -R
 ```
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/12.jpg)
-![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/13.jpg)	
+![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/13.jpg)
+
 启动信息里有一个关于绑定ip的描述：
 ```
 	'bound_addresses{[::1]:9200},{120.0.0.1:9200}'	
 ```
-![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/14.jpg)	
+![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/14.jpg)
+
 在浏览器中输入地址，可以实现外网访问
 
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/15.jpg)
@@ -97,24 +103,29 @@ Kibana 是基于Elasticsearch做的一个搜索结果可视化插件
 在官网找到对应版本下载:6.4.1	
 
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/16.jpg)
+
 解压压缩包:
 ```
 	tar zxvf kibana-6.4.1-linux-x86_64.tar.gz
 ```
-![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/17.jpg)	
+![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/17.jpg)
+
 解压以后在bin目录下启动kibana	
 
-![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/18.jpg)	
+![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/18.jpg)
+
 在启动信息里找到端口号	
 
-![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/19.jpg)	
+![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/19.jpg)
+
 在浏览器中访问 localhost：5601	
 
-![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/20.jpg)	
+![](./img/20.jpg)
+
 应当可以使用	
 
 ![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/21.jpg)
-![](https://github.com/xiezongai/Sentinel-Pris/raw/master/elastic_search_api/img/22.jpg)
+![](./img/22.jpg)
 
 
 
